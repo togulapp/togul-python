@@ -55,11 +55,11 @@ target-version = "py39"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
-# UP006/UP007/UP045 would rewrite typing.Optional/Dict/List into PEP 604/585
+# UP006/UP007/UP035/UP045 would rewrite typing.Optional/Dict/List into PEP 604/585
 # syntax. `from __future__ import annotations` makes that parse on 3.9, but it
 # breaks anywhere annotations are evaluated at runtime (typing.get_type_hints,
 # pydantic, FastAPI dependency resolution). The 3.9 floor keeps typing.*.
-ignore = ["UP006", "UP007", "UP045"]
+ignore = ["UP006", "UP007", "UP035", "UP045"]
 
 [tool.mypy]
 # No python_version pin: mypy >= 1.18 rejects 3.9 as a target. 3.9 compatibility
