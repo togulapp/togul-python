@@ -127,6 +127,22 @@ def test_blank_api_key_raises(config):
     assert sleeps == [1.0, 2.0, 4.0, 8.0]
 
 
+def test_backoff_resets_to_initial_after_a_clean_disconnect(config):
+    cache = filled_cache()
+    sleeps: list = []
+    # 500 -> the backoff climbs to 2.0; 200 -> a clean stream resets it to 1.0;
+    # then 500s forever. The second sleep proves the reset: without it the
+    # sequence would be [1.0, 2.0, 4.0, 8.0].
+    client = build(
+        config,
+        cache,
+        [sse("", 500), sse('data: {"flag_key":"theme"}\n'), sse("", 500)],
+        sleeps,
+    )
+    client.connect()
+    assert sleeps == [1.0, 1.0, 2.0, 4.0]
+
+
 async def test_async_stream_invalidates_the_flag(config):
     cache = filled_cache()
 
@@ -140,3 +156,27 @@ async def test_async_stream_invalidates_the_flag(config):
 
     assert cache.get("theme:production") is None
     assert cache.get("other:production") is not None
+
+
+@pytest.mark.parametrize("status", [401, 403])
+async def test_async_auth_errors_are_raised_without_reconnecting(config, status):
+    cache = filled_cache()
+    sleeps: list = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return sse("", status)
+
+    http = httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url=config.base_url)
+    client = AsyncTogulStreamClient(config, cache, http_client=http)
+
+    async def fake_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+        if len(sleeps) >= 4:
+            client.stop()
+
+    client._sleep = fake_sleep
+
+    with pytest.raises(TogulAPIError) as exc:
+        await client.connect()
+    assert exc.value.status_code == status
+    assert sleeps == []
