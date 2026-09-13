@@ -17,7 +17,10 @@ def test_defaults_match_other_sdks():
 
 
 def test_base_url_trailing_slashes_are_stripped():
-    assert Config(api_key="k", environment="e", base_url="https://x.dev///").base_url == "https://x.dev"
+    assert (
+        Config(api_key="k", environment="e", base_url="https://x.dev///").base_url
+        == "https://x.dev"
+    )
 
 
 def test_blank_base_url_falls_back_to_default():
