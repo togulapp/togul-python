@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "togul"
+version = "0.1.0"
+description = "Official Python SDK for Togul feature flags and remote config"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Togul" }]
+keywords = ["feature-flags", "feature-toggle", "remote-config", "togul"]
+dependencies = ["httpx>=0.24,<1"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+
+[project.optional-dependencies]
+django = ["django>=4.2"]
+fastapi = ["fastapi>=0.100"]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "ruff>=0.4",
+    "mypy>=1.8",
+    "build>=1.0",
+    "twine>=5.0",
+]
+
+[project.urls]
+Homepage = "https://togul.io"
+Documentation = "https://docs.togul.io"
+Source = "https://github.com/togulapp/togul-python"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/togul"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+files = ["src/togul"]
