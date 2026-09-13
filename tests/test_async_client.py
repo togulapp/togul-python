@@ -9,50 +9,8 @@ from togul.errors import TogulAPIError, TogulError
 from .conftest import Recorder, err, make_transport, ok
 
 
-class _AsyncByteStreamWrapper(httpx.AsyncByteStream):
-    """Wraps content in an async byte stream for testing."""
-
-    def __init__(self, content: bytes) -> None:
-        self.content = content
-        self.consumed = False
-
-    async def __aiter__(self):  # type: ignore[no-untyped-def]
-        if self.consumed:
-            raise httpx.StreamConsumed()
-        self.consumed = True
-        yield self.content
-
-    async def aclose(self) -> None:  # type: ignore[no-untyped-def]
-        pass
-
-
-class AsyncMockTransport(httpx.AsyncBaseTransport):
-    """Async-compatible mock transport for testing."""
-
-    def __init__(self, responses, recorder=None):
-        self.responses = list(responses)
-        self.recorder = recorder
-
-    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-        if self.recorder is not None:
-            self.recorder.requests.append(request)
-        response = self.responses.pop(0) if len(self.responses) > 1 else self.responses[0]
-        # Convert the response stream to async for AsyncClient compatibility
-        if not isinstance(response.stream, httpx.AsyncByteStream):
-            # Create a new response with an async byte stream
-            content = response.content
-            async_stream = _AsyncByteStreamWrapper(content)
-            response = httpx.Response(
-                response.status_code,
-                headers=response.headers,
-                stream=async_stream,
-                extensions=response.extensions,
-            )
-        return response
-
-
 def build(config, responses, recorder=None) -> AsyncTogulClient:
-    transport = AsyncMockTransport(responses, recorder)
+    transport = make_transport(responses, recorder)
     http = httpx.AsyncClient(transport=transport, base_url=config.base_url)
     return AsyncTogulClient(config, http_client=http)
 
@@ -138,12 +96,16 @@ async def test_sync_and_async_agree_on_the_same_payload(config):
 
     from togul.client import TogulClient
 
-    payload = ok(value={"theme": "dark"}, value_type="json", flag_key="user_config")
+    def payload() -> _httpx.Response:
+        # A fresh Response per client: httpx rebinds response.stream to a
+        # BoundSyncStream / BoundAsyncStream when it sends, so one object
+        # cannot be replayed across a sync and an async client.
+        return ok(value={"theme": "dark"}, value_type="json", flag_key="user_config")
 
     sync_client = TogulClient(
         config,
-        http_client=_httpx.Client(transport=make_transport([payload]), base_url=config.base_url),
+        http_client=_httpx.Client(transport=make_transport([payload()]), base_url=config.base_url),
     )
-    async_client = build(config, [payload])
+    async_client = build(config, [payload()])
 
     assert sync_client.evaluate("user_config") == await async_client.evaluate("user_config")
