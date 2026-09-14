@@ -221,6 +221,10 @@ Every field of `Config`:
 
 `Config` is a frozen dataclass: build a new one to change settings.
 
+`evaluate()` is the only evaluation method — there are no typed
+`evaluate_string` / `evaluate_boolean` helpers. Read `result.value` and
+interpret it according to `result.value_type`.
+
 ## Caching and invalidation
 
 Both clients keep an in-memory, thread-safe TTL cache of `EvaluateResult`s.
@@ -235,11 +239,13 @@ against environment `production` produces
 
 `invalidate_cache()` clears the whole cache; `invalidate_flag(flag_key)`
 clears only entries for that flag. A `TogulStreamClient` /
-`AsyncTogulStreamClient` calls these automatically as SSE events arrive: an
-event naming a `flag_key` invalidates just that flag, and a malformed event
-with no key flushes the whole cache. Register `on_cache_invalidated(...)` on
-either the evaluation client or the stream client to observe invalidations
-yourself, e.g. for logging.
+`AsyncTogulStreamClient` calls these automatically as SSE events arrive. A
+line that is not a well-formed `data:` JSON object — a heartbeat, a blank
+line, or a malformed payload — is ignored entirely: no invalidation, no
+flush. A well-formed event naming a `flag_key` invalidates just that flag; a
+well-formed event that omits it flushes the whole cache. Register
+`on_cache_invalidated(...)` on either the evaluation client or the stream
+client to observe invalidations yourself, e.g. for logging.
 
 ## Error handling
 
@@ -249,8 +255,10 @@ raised when the API itself returns a non-2xx response; it carries
 
 Retries apply only to HTTP `429` and any `5xx` response, plus network-level
 failures. Every other `4xx` (400, 401, 403, 404, ...) raises immediately with
-no retry. When retries are exhausted, the client raises a `TogulError`
-wrapping the last failure.
+no retry. Each retry waits `attempt × 100ms` before trying again, so with the
+default `retry_count` of 2 the single retry is delayed by 100ms. When
+retries are exhausted, the client raises a `TogulError` wrapping the last
+failure.
 
 **There is no fail-open fallback.** Unlike SDKs that silently return a
 default value when evaluation fails, this SDK never guesses on your behalf:
