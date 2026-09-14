@@ -69,3 +69,12 @@ ignore = ["UP006", "UP007", "UP035", "UP045"]
 # is guarded by ruff's target-version = "py39" and by the 3.9 leg of the CI matrix.
 strict = true
 files = ["src/togul"]
+
+[[tool.mypy.overrides]]
+# Django ships no py.typed marker and no inline stubs, so importing it under
+# strict mypy raises import-untyped. This silences only "Django has no stubs";
+# our own code in contrib/django.py stays strictly checked. django-stubs is the
+# alternative but it needs a mypy plugin plus a django_settings_module pointing
+# at a real settings module, which a library (not a Django project) has none of.
+module = ["django.*"]
+ignore_missing_imports = true
