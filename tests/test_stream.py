@@ -115,6 +115,15 @@ def test_backoff_is_capped(config):
     assert INITIAL_BACKOFF == 1.0
     assert MAX_BACKOFF == 30.0
 
+    # Behavioural proof the cap is actually applied, not just declared: this
+    # would still pass unchanged if `_next_backoff` used
+    # `max(backoff * 2, MAX_BACKOFF)` instead of `min(...)` unless both the
+    # below-cap doubling and the at/above-cap clamp are asserted.
+    cache = filled_cache()
+    client = build(config, cache, [sse("")])
+    assert client._next_backoff(4.0) == 8.0
+    assert client._next_backoff(16.0) == 30.0
+
 
 def test_blank_api_key_raises(config):
     blank = type(config)(api_key="", environment="production", base_url=config.base_url)

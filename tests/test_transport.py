@@ -83,6 +83,38 @@ def test_parse_result_tolerates_a_non_dict_payload():
     assert result.value_type == ""
 
 
+@pytest.mark.parametrize(
+    ("value_type", "value"),
+    [
+        ("number", 0),
+        ("boolean", False),
+        ("string", ""),
+        ("json", []),
+    ],
+)
+def test_parse_result_preserves_falsy_values(value_type, value):
+    """Regression guard for FIX 3.
+
+    `parse_result` is internally inconsistent on purpose right now: `value`
+    uses a bare `.get()` while `flag_key`/`value_type`/`reason` use an
+    `or`-collapse and `enabled` uses `.get("enabled", False)`. That mix is
+    *correct* today — a falsy `value` of `0`, `False`, `""` or `[]` survives
+    intact — but nothing pinned it, which invites a future "make these
+    uniform" cleanup that would silently turn every falsy flag value into
+    `None` in the parity core both clients call. Do not "fix" this
+    inconsistency; this test exists to keep it exactly as it is.
+    """
+    result = t.parse_result({"value": value, "value_type": value_type}, "f")
+    assert result.value == value
+    if value is False:
+        assert result.value is False
+
+
+def test_parse_result_preserves_an_explicit_false_enabled():
+    result = t.parse_result({"enabled": False, "value_type": "boolean"}, "f")
+    assert result.enabled is False
+
+
 def test_api_error_reads_code_and_message():
     error = t.api_error_from(403, {"code": "forbidden", "message": "no access"})
     assert error.status_code == 403
