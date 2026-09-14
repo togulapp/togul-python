@@ -244,8 +244,13 @@ line that is not a well-formed `data:` JSON object — a heartbeat, a blank
 line, or a malformed payload — is ignored entirely: no invalidation, no
 flush. A well-formed event naming a `flag_key` invalidates just that flag; a
 well-formed event that omits it flushes the whole cache. Register
-`on_cache_invalidated(...)` on either the evaluation client or the stream
-client to observe invalidations yourself, e.g. for logging.
+`on_cache_invalidated(...)` on the stream client to observe SSE-driven
+invalidations, e.g. for logging — the stream client invalidates the cache
+directly and only notifies its own listeners, so it never routes through the
+evaluation client. A listener registered on the evaluation client instead
+fires only for invalidations *you* trigger by calling that client's own
+`invalidate_cache()` / `invalidate_flag()` directly; it will not fire for SSE
+events.
 
 ## Error handling
 
