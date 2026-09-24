@@ -13,6 +13,7 @@ Framework integrations are extras:
 ```bash
 pip install "togul[django]"
 pip install "togul[fastapi]"
+pip install "togul[openfeature]"
 ```
 
 ## Quick start (sync)
@@ -205,6 +206,41 @@ connection and rely on `cache_ttl` alone.
 `get_togul` is a plain `Depends()` provider that reads `app.state.togul`.
 
 See [`examples/fastapi_app.py`](examples/fastapi_app.py).
+
+## OpenFeature
+
+`TogulProvider` plugs Togul into the [OpenFeature](https://openfeature.dev) Python SDK, so application code can depend on the vendor-neutral API instead of `TogulClient`.
+
+```python
+from openfeature import api
+from openfeature.evaluation_context import EvaluationContext
+from togul import Config, TogulClient
+from togul.contrib.openfeature import TogulProvider
+
+togul = TogulClient(Config(api_key="your-environment-api-key", environment="production"))
+api.set_provider(TogulProvider(togul))
+
+client = api.get_client()
+context = EvaluationContext("user-42", {"country": "TR"})
+
+client.get_boolean_value("new-dashboard", False, context)
+client.get_string_value("theme", "light", context)
+client.get_integer_value("max-items", 10, context)
+client.get_object_value("limits", {}, context)
+```
+
+For asyncio code pass an `AsyncTogulClient` as `async_client=` (alone or next to a sync client) and use the `*_async` methods (`await client.get_boolean_value_async(...)`); without one, the async API falls back to the sync client and blocks the event loop.
+
+The provider only adapts `evaluate()`; caching, retries and SSE invalidation are unchanged, and every invalidation is re-emitted as `PROVIDER_CONFIGURATION_CHANGED`. Context values are flattened to strings (objects JSON-encoded, datetimes ISO 8601) and the targeting key is sent as `user_id` unless `user_id` is set; `targeting_key_attribute="account_id"` changes that. Python 3.9 gets `openfeature-sdk` 0.8.x, the last line supporting it.
+
+| Togul | OpenFeature |
+|---|---|
+| `reason: rule_match` | `TARGETING_MATCH` |
+| `reason: default` | `DEFAULT` |
+| `enabled: false` | caller's default value, reason `DISABLED` |
+| `404 evaluate.flag_not_found` | caller's default, `FLAG_NOT_FOUND` |
+| value does not fit the requested type (incl. a fractional number for integers) | caller's default, `TYPE_MISMATCH` |
+| any other error | caller's default, `GENERAL` |
 
 ## Configuration reference
 
