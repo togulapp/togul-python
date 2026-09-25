@@ -12,11 +12,12 @@ class EvaluateResult:
 
     Attributes:
         flag_key: The evaluated flag key.
-        enabled: Whether the flag itself is enabled.
+        enabled: Whether the flag is on for this context (false when it is
+            disabled or one of its prerequisites failed).
         value_type: One of ``boolean``, ``string``, ``number``, ``json``.
             An empty string means the API response was malformed.
         value: The flag value. Its Python type follows ``value_type``.
-        reason: One of ``disabled``, ``rule_match``, ``default``.
+        reason: One of ``disabled``, ``prerequisite_failed``, ``rule_match``, ``default``.
     """
 
     flag_key: str
