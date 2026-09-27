@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "togul"
-version = "0.1.0"
+version = "0.2.0"
 description = "Official Python SDK for Togul feature flags and remote config"
 readme = "README.md"
 requires-python = ">=3.9"

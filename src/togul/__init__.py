@@ -9,7 +9,7 @@ from .errors import TogulAPIError, TogulError
 from .result import EvaluateResult, ValueType
 from .stream import AsyncTogulStreamClient, TogulStreamClient
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "AsyncTogulClient",
